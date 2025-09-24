@@ -3,3 +3,39 @@
 aws s3 mb s3://iris-mlops-artifacts --region us-east-1
 aws s3 mb s3://iris-mlops-kedro-data --region us-east-1
 
+# 2. Code pipeline conexion git / traer arn en codepipeline YAML
+
+# 3. Ejecuición CLOUD FORMATON
+
+Pila1 : MainStack
+
+aws cloudformation deploy \
+  --stack-name IrisMLOps-MainStack \
+  --template-file infrastructure/main_stack.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    ProjectName=iris-mlops \
+    ArtifactsBucketName=iris-mlops-artifacts \
+    KedroDataBucketName=iris-mlops-kedro-data \
+  --region us-east-1
+
+Pila2: CodePipelineStack
+
+aws cloudformation deploy \
+  --stack-name IrisMLOps-CodePipelineStack \
+  --template-file infrastructure/codepipeline_stack.yaml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides \
+    ProjectName=iris-mlops \
+    GitHubConnectionArn="arn:aws:codeconnections:us-east-1:503427799533:connection/9da96d16-3560-4cb3-92ce-2ed3db8ba159" \
+    GitHubRepositoryOwner="AlbertStats19" \
+    GitHubRepositoryName="AWS_SG_KEDRO" \
+    GitHubBranchName="main" \
+  --region us-east-1
+
+
+# 4. Ejecución SAGEMAKER
+
+aws sagemaker start-pipeline-execution \
+  --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance \
+  --region us-east-1
