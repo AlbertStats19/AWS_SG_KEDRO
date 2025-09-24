@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM roles y exports para pipeline Kedro (TradeOffBiasVariance) sin crear buckets.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: iris-mlops
+    Description: Prefijo del proyecto.
+  ArtifactsBucketName:
+    Type: String
+    Default: iris-mlops-artifacts
+    Description: Bucket EXISTENTE para artifacts (CodePipeline/CodeBuild/SageMaker).
+  KedroDataBucketName:
+    Type: String
+    Default: iris-mlops-kedro-data
+    Description: Bucket EXISTENTE para datos Kedro (rutas catalog/parameters).
+
+Resources:
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-CodeBuildServiceRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codebuild.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyName: S3AccessArtifactsAndKedroData
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3List
+                Effect: Allow
+                Action: [ "s3:ListBucket" ]
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}"
+                  - !Sub "arn:aws:s3:::${KedroDataBucketName}"
+              - Sid: S3RW
+                Effect: Allow
+                Action: [ "s3:GetObject", "s3:PutObject", "s3:DeleteObject" ]
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}/*"
+                  - !Sub "arn:aws:s3:::${KedroDataBucketName}/*"
+
+  CodePipelineServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-CodePipelineServiceRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: codepipeline.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSCodePipeline_FullAccess
+        - arn:aws:iam::aws:policy/AWSCodeStarFullAccess
+      Policies:
+        - PolicyName: S3ArtifactStoreAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [ "s3:ListBucket" ]
+                Resource: !Sub "arn:aws:s3:::${ArtifactsBucketName}"
+              - Effect: Allow
+                Action: [ "s3:GetObject", "s3:PutObject", "s3:DeleteObject" ]
+                Resource: !Sub "arn:aws:s3:::${ArtifactsBucketName}/*"
+
+  SageMakerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-SageMakerExecutionRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: sagemaker.amazonaws.com }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSageMakerFullAccess
+      Policies:
+        - PolicyName: S3AccessForProcessing
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3List
+                Effect: Allow
+                Action: [ "s3:ListBucket" ]
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}"
+                  - !Sub "arn:aws:s3:::${KedroDataBucketName}"
+              - Sid: S3RW
+                Effect: Allow
+                Action: [ "s3:GetObject", "s3:PutObject", "s3:DeleteObject" ]
+                Resource:
+                  - !Sub "arn:aws:s3:::${ArtifactsBucketName}/*"
+                  - !Sub "arn:aws:s3:::${KedroDataBucketName}/*"
+
+Outputs:
+  CodeBuildServiceRoleArn:
+    Description: ARN del rol de CodeBuild
+    Value: !GetAtt CodeBuildServiceRole.Arn
+    Export:
+      Name: !Sub "${ProjectName}-CodeBuildServiceRoleArn"
+
+  CodePipelineServiceRoleArn:
+    Description: ARN del rol de CodePipeline
+    Value: !GetAtt CodePipelineServiceRole.Arn
+    Export:
+      Name: !Sub "${ProjectName}-CodePipelineServiceRoleArn"
+
+  SageMakerExecutionRoleArn:
+    Description: ARN del rol de SageMaker
+    Value: !GetAtt SageMakerExecutionRole.Arn
+    Export:
+      Name: !Sub "${ProjectName}-SageMakerExecutionRoleArn"
+
+  MLOpsArtifactsBucketName:
+    Description: Nombre del bucket de artifacts
+    Value: !Ref ArtifactsBucketName
+    Export:
+      Name: !Sub "${ProjectName}-MLOpsArtifactsBucketName"
+
+  KedroDataBucketName:
+    Description: Nombre del bucket de datos Kedro
+    Value: !Ref KedroDataBucketName
+    Export:
+      Name: !Sub "${ProjectName}-KedroDataBucketName"

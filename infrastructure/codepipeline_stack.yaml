@@ -1,0 +1,108 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: CodePipeline + CodeBuild para registrar pipeline SageMaker (TradeOffBiasVariance).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: iris-mlops
+    Description: Prefijo del proyecto.
+  GitHubConnectionArn:
+    Type: String
+    Description: ARN de CodeStar Connection hacia GitHub.
+  GitHubRepositoryOwner:
+    Type: String
+    Default: AlbertStats19
+  GitHubRepositoryName:
+    Type: String
+    Default: AWS_SG_KEDRO
+  GitHubBranchName:
+    Type: String
+    Default: main
+
+Resources:
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub "${ProjectName}-CodeBuild-Project"
+      Description: "Instala deps y upserta SageMaker Pipeline: TradeOffBiasVariance"
+      ServiceRole: !ImportValue
+        Fn::Sub: "${ProjectName}-CodeBuildServiceRoleArn"
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        ComputeType: BUILD_GENERAL1_MEDIUM
+        Image: aws/codebuild/standard:5.0
+        Type: LINUX_CONTAINER
+        EnvironmentVariables:
+          - Name: AWS_REGION
+            Value: !Ref "AWS::Region"
+          - Name: S3_ARTIFACT_BUCKET
+            Value: !ImportValue
+              Fn::Sub: "${ProjectName}-MLOpsArtifactsBucketName"
+          - Name: SAGEMAKER_EXECUTION_ROLE_ARN
+            Value: !ImportValue
+              Fn::Sub: "${ProjectName}-SageMakerExecutionRoleArn"
+          - Name: SAGEMAKER_BASE_JOB_PREFIX
+            Value: !Sub "${ProjectName}-pipeline"
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: buildspec.yml
+      TimeoutInMinutes: 30
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  CodePipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub "${ProjectName}-MLOps-Pipeline"
+      RoleArn: !ImportValue
+        Fn::Sub: "${ProjectName}-CodePipelineServiceRoleArn"
+      ArtifactStore:
+        Type: S3
+        Location: !ImportValue
+          Fn::Sub: "${ProjectName}-MLOpsArtifactsBucketName"
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: SourceFromGitHub
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Provider: CodeStarSourceConnection
+                Version: '1'
+              OutputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ConnectionArn: !Ref GitHubConnectionArn  ### cambiar aquí
+                FullRepositoryId: !Sub "${GitHubRepositoryOwner}/${GitHubRepositoryName}"
+                BranchName: !Ref GitHubBranchName
+              RunOrder: 1
+        - Name: Build
+          Actions:
+            - Name: UpsertTradeOffBiasVariance
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Provider: CodeBuild
+                Version: '1'
+              InputArtifacts:
+                - Name: SourceOutput
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+              RunOrder: 1
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  CodeBuildProjectName:
+    Description: Nombre del proyecto CodeBuild.
+    Value: !Ref CodeBuildProject
+    Export:
+      Name: !Sub "${ProjectName}-CodeBuildProjectName"
+  CodePipelineName:
+    Description: Nombre del CodePipeline.
+    Value: !Ref CodePipeline
+    Export:
+      Name: !Sub "${ProjectName}-CodePipelineName"
