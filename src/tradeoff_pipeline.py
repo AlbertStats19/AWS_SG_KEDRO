@@ -19,7 +19,7 @@ def get_pipeline(
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
     default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
-    # === Parámetros del pipeline (simulan tus CLI params) ===
+    # === Parámetros del pipeline ===
     param_product = ParameterString(name="Product", default_value="CDT")
     param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
@@ -39,12 +39,13 @@ def get_pipeline(
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",
+        code="src/processing/run_kedro.py",   # ya empaqueta tu repo en /opt/ml/processing/code
         inputs=[
+            # Si necesitas pasar configs, usa otra carpeta distinta
             ProcessingInput(
-                source=".",  # El repo traído por CodePipeline
-                destination="/opt/ml/processing/code",
-                input_name="source",
+                source="conf_mlops",
+                destination="/opt/ml/processing/conf_mlops",
+                input_name="conf_mlops",
             )
         ],
         outputs=[
@@ -86,6 +87,6 @@ if __name__ == "__main__":
         base_job_prefix=base_job_prefix,
     )
 
-    print(f"Upserting SageMaker Pipeline: {pipeline.name}")
+    print(f"[INFO] Upserting SageMaker Pipeline: {pipeline.name}")
     pipeline.upsert(role_arn=role)
-    print(f"Pipeline {pipeline.name} creado/actualizado correctamente ✅")
+    print(f"[INFO] Pipeline {pipeline.name} creado/actualizado correctamente ✅")
