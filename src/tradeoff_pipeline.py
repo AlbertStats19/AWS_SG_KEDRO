@@ -1,11 +1,11 @@
 import os
+import sagemaker
 from sagemaker.sklearn.processing import SKLearnProcessor
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.session import Session
-import sagemaker
+
 
 def get_pipeline(
     region=None,
@@ -14,7 +14,7 @@ def get_pipeline(
     base_job_prefix="iris-mlops",
 ):
     region = region or os.environ.get("AWS_REGION", "us-east-1")
-    sagemaker_session = sagemaker.session.Session()
+    sagemaker_session = sagemaker.Session()
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
     default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
@@ -24,9 +24,9 @@ def get_pipeline(
     param_var     = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target  = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # === Processor con imagen preconstruida (sin ECR) ===
+    # === Processor con imagen sklearn preconstruida ===
     processor = SKLearnProcessor(
-        framework_version="1.2-1",   # versión estable (ajústala si la imagen cambia)
+        framework_version="1.2-1",
         role=role,
         instance_type="ml.t3.medium",
         instance_count=1,
@@ -34,25 +34,19 @@ def get_pipeline(
         base_job_name=f"{base_job_prefix}-tradeoff",
     )
 
-    # === Inputs/Outputs del job (el código y config van desde CodePipeline/Source) ===
     step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=processor,
         inputs=[
             ProcessingInput(
-                source=sagemaker_session.default_bucket() if default_bucket is None else default_bucket,
-                destination="/opt/ml/processing/input",   # opcional si quieres inyectar algo
-                input_name="empty",                        # placeholder si no usas inputs
-            ),
-            ProcessingInput(
-                source=".",                                # el repo descargado por CodeBuild -> CodePipeline artifact
+                source=".",
                 destination="/opt/ml/processing/code",
                 input_name="source",
             ),
         ],
         outputs=[
             ProcessingOutput(
-                source="/opt/ml/processing/code",          # si tu pipeline deja artefactos ahí
+                source="/opt/ml/processing/code",
                 destination=f"s3://{default_bucket}/tradeoff/artifacts/",
                 output_name="artifacts",
             )
@@ -73,3 +67,24 @@ def get_pipeline(
         sagemaker_session=sagemaker_session,
     )
     return pipeline
+
+
+if __name__ == "__main__":
+    region = os.environ.get("AWS_REGION")
+    role = os.environ.get("SAGEMAKER_EXECUTION_ROLE_ARN")
+    default_bucket = os.environ.get("S3_ARTIFACT_BUCKET")
+    base_job_prefix = os.environ.get("SAGEMAKER_BASE_JOB_PREFIX", "iris-mlops")
+
+    if not all([region, role, default_bucket]):
+        print("ERROR: faltan variables de entorno necesarias para registrar el pipeline.")
+        import sys
+        sys.exit(1)
+
+    pipeline = get_pipeline(region=region, role=role, default_bucket=default_bucket, base_job_prefix=base_job_prefix)
+
+    print(f"\nBucket en uso por este pipeline: {default_bucket}\n")
+    print(f"Upserting SageMaker Pipeline: {pipeline.name}")
+    pipeline.upsert(role_arn=role)
+
+    print("Pipeline registrado correctamente en SageMaker. ✅")
+    print("Recuerda: el start del pipeline lo lanzas manualmente desde la consola o CLI.")

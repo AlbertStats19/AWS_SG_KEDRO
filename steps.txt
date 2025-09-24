@@ -43,6 +43,4 @@ aws cloudformation deploy `
 
 # 4. Ejecución SAGEMAKER
 
-aws sagemaker start-pipeline-execution \
-  --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance \
-  --region us-east-1
+aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
