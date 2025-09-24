@@ -56,12 +56,12 @@ def get_pipeline(
                 output_name="artifacts",
             )
         ],
-        code="/opt/ml/processing/code/src/processing/run_kedro.py",
+        code="src/processing/run_kedro.py",
         job_arguments=[
-            "--product", param_product.to_string(),
-            "--fecha_ejecucion", param_fecha.to_string(),
-            "--variable_apertura", param_var.to_string(),
-            "--target", param_target.to_string(),
+            "--product", param_product,
+            "--fecha_ejecucion", param_fecha,
+            "--variable_apertura", param_var,
+            "--target", param_target,
         ],
     )
 
