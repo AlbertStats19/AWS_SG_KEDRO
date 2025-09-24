@@ -1,16 +1,38 @@
 version: 0.2
 
+env:
+  variables:
+    AWS_REGION: "us-east-1" # será sobreescrito por CloudFormation
+    S3_ARTIFACT_BUCKET: "iris-mlops-artifacts" # bucket de artifacts
+    S3_KEDRO_DATA_BUCKET: "iris-mlops-kedro-data" # bucket con datos Kedro
+    SAGEMAKER_EXECUTION_ROLE_ARN: "arn:aws:iam::123456789012:role/SageMakerExecutionRole" # placeholder
+    SAGEMAKER_BASE_JOB_PREFIX: "iris-mlops" # prefijo de SageMaker jobs
+
 phases:
   install:
     commands:
-      - echo "Installing dependencies"
+      - echo "=== Instalando dependencias base ==="
       - python -m pip install --upgrade pip
       - pip install -r requirements.txt
+      - pip install sagemaker
+      - pip install boto3
+
+  pre_build:
+    commands:
+      - echo "=== Pre-build checks ==="
+      - ls -R conf_mlops/ || echo "Directorio conf_mlops no encontrado"
+      - ls -R src/ || echo "Directorio src no encontrado"
 
   build:
     commands:
-      - echo "Upserting SageMaker Pipeline: TradeOffBiasVariance"
-      - python src/upsert_pipeline.py
+      - echo "=== Ejecutando TradeOffBiasVariance Pipeline en SageMaker ==="
+      - python src/tradeoff_pipeline.py
+
+  post_build:
+    commands:
+      - echo "=== Pipeline enviado a SageMaker ==="
+      - echo "Revisa la consola de SageMaker para el job TradeOffBiasVariance"
+      - echo "Build completado."
 
 artifacts:
   files:
