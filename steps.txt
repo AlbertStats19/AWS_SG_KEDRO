@@ -9,30 +9,37 @@ aws s3 mb s3://iris-mlops-kedro-data --region us-east-1
 
 Pila1 : MainStack
 
-aws cloudformation deploy \
-  --stack-name IrisMLOps-MainStack \
-  --template-file infrastructure/main_stack.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    ProjectName=iris-mlops \
-    ArtifactsBucketName=iris-mlops-artifacts \
-    KedroDataBucketName=iris-mlops-kedro-data \
+aws cloudformation deploy `
+  --stack-name IrisMLOps-MainStack `
+  --template-file infrastructure/main_stack.yaml `
+  --capabilities CAPABILITY_NAMED_IAM `
+  --parameter-overrides `
+    ProjectName=iris-mlops `
+    ArtifactsBucketName=iris-mlops-artifacts `
+    KedroDataBucketName=iris-mlops-kedro-data `
   --region us-east-1
+
 
 Pila2: CodePipelineStack
 
-aws cloudformation deploy \
-  --stack-name IrisMLOps-CodePipelineStack \
-  --template-file infrastructure/codepipeline_stack.yaml \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameter-overrides \
-    ProjectName=iris-mlops \
-    GitHubConnectionArn="arn:aws:codeconnections:us-east-1:503427799533:connection/9da96d16-3560-4cb3-92ce-2ed3db8ba159" \
-    GitHubRepositoryOwner="AlbertStats19" \
-    GitHubRepositoryName="AWS_SG_KEDRO" \
-    GitHubBranchName="main" \
+aws cloudformation deploy `
+  --stack-name IrisMLOps-CodePipelineStack `
+  --template-file infrastructure/codepipeline_stack.yaml `
+  --capabilities CAPABILITY_NAMED_IAM `
+  --parameter-overrides `
+    ProjectName=iris-mlops `
+    GitHubConnectionArn="arn:aws:codeconnections:us-east-1:503427799533:connection/9da96d16-3560-4cb3-92ce-2ed3db8ba159" `
+    GitHubRepositoryOwner="AlbertStats19" `
+    GitHubRepositoryName="AWS_SG_KEDRO" `
+    GitHubBranchName="main" `
   --region us-east-1
 
+# 3.5 Agregar roles:  CodePipelineServiceRole
+# AdministratorAccess
+# AmazonElasticContainerRegistryPublicFullAccess
+# AmazonSageMakerFullAccess
+# AWSCodeBuildAdminAccess
+# AWSCodePipeline_FullAccess
 
 # 4. Ejecución SAGEMAKER
 
