@@ -39,9 +39,9 @@ def get_pipeline(
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",   # ya empaqueta tu repo en /opt/ml/processing/code
+        code="src/processing/run_kedro.py",   # tu script
+        dependencies=["requirements.txt"],   # 👈 instala Kedro antes de ejecutar
         inputs=[
-            # Si necesitas pasar configs, usa otra carpeta distinta
             ProcessingInput(
                 source="conf_mlops",
                 destination="/opt/ml/processing/conf_mlops",

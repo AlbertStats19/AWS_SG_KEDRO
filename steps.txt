@@ -52,3 +52,9 @@ aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-Trade
 aws sagemaker list-pipeline-executions --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
 
 aws sagemaker list-pipeline-execution-steps --pipeline-execution-arn arn:aws:sagemaker:us-east-1:503427799533:pipeline/iris-mlops-pipeline-TradeOffBiasVariance/execution/6u4y5nk1ilf5 --region us-east-1
+
+aws sagemaker list-pipeline-execution-steps --pipeline-execution-arn $(aws sagemaker list-pipeline-executions --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1 --query "PipelineExecutionSummaries[0].PipelineExecutionArn" --output text) --region us-east-1
+
+aws sagemaker describe-processing-job --processing-job-name pipelines-fhv8urhpsw91-TradeOffBiasVariance-oBK3mwh4o3 --region us-east-1
+
+aws logs describe-log-streams --log-group-name /aws/sagemaker/ProcessingJobs --log-stream-name-prefix pipelines-fhv8urhpsw91-TradeOffBiasVariance-oBK3mwh4o3 --region us-east-1
