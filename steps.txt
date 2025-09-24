@@ -5,7 +5,7 @@ aws s3 mb s3://iris-mlops-kedro-data --region us-east-1
 
 # 2. Code pipeline conexion git / traer arn en codepipeline YAML
 
-# 3. Ejecuición CLOUD FORMATON
+# 3. Ejecución CLOUD FORMATON
 
 Pila1 : MainStack
 
@@ -41,6 +41,14 @@ aws cloudformation deploy `
 # AWSCodeBuildAdminAccess
 # AWSCodePipeline_FullAccess
 
-# 4. Ejecución SAGEMAKER
+# 4. Validar pipeline y registro
+aws sagemaker list-pipelines --region us-east-1
+
+# 5. Ejecución SAGEMAKER
 
 aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
+
+# 6. Pasos de la Ejecución
+aws sagemaker list-pipeline-executions --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
+
+aws sagemaker list-pipeline-execution-steps --pipeline-execution-arn arn:aws:sagemaker:us-east-1:503427799533:pipeline/iris-mlops-pipeline-TradeOffBiasVariance/execution/6u4y5nk1ilf5 --region us-east-1
