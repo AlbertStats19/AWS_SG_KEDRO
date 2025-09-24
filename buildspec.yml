@@ -6,24 +6,24 @@ phases:
       - echo "Python & deps"
       - python -m pip install --upgrade pip
       - pip install -r requirements.txt
+
   build:
     commands:
       - echo "Create/Update SageMaker Pipeline: TradeOffBiasVariance"
-      - python - << 'PY'
-from src.tradeoff_pipeline import get_pipeline
-import os
-import sagemaker
-sess = sagemaker.session.Session()
-pipeline = get_pipeline(
-    region=os.environ.get("AWS_REGION"),
-    role=os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"],
-    default_bucket=os.environ.get("S3_ARTIFACT_BUCKET"),
-    base_job_prefix=os.environ.get("SAGEMAKER_BASE_JOB_PREFIX","iris-mlops")
-)
-definition = pipeline.definition()
-pipeline.upsert(role_arn=os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"])
-print("Pipeline upserted: iris-mlops-pipeline-TradeOffBiasVariance")
-PY
+      - |
+        python - << 'PY'
+        from src.tradeoff_pipeline import get_pipeline
+        import os, sagemaker
+        sess = sagemaker.session.Session()
+        pipeline = get_pipeline(
+            region=os.environ.get("AWS_REGION"),
+            role=os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"],
+            default_bucket=os.environ.get("S3_ARTIFACT_BUCKET"),
+            base_job_prefix=os.environ.get("SAGEMAKER_BASE_JOB_PREFIX","iris-mlops")
+        )
+        pipeline.upsert(role_arn=os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"])
+        print("Pipeline upserted: iris-mlops-pipeline-TradeOffBiasVariance")
+        PY
 
 artifacts:
   files:
