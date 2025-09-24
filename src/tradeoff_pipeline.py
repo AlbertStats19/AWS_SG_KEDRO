@@ -1,41 +1,58 @@
 import os
 import sagemaker
-from sagemaker.workflow.pipeline import Pipeline
-from sagemaker.processing import ScriptProcessor, ProcessingInput
+from sagemaker.sklearn.processing import SKLearnProcessor
+from sagemaker.processing import ProcessingInput, ProcessingOutput
 from sagemaker.workflow.parameters import ParameterString
-
-# Parámetros del pipeline
-param_product = ParameterString(name="product", default_value="default_product")
-param_fecha = ParameterString(name="fecha_ejecucion", default_value="2025-01-01")
-param_var = ParameterString(name="variable_apertura", default_value="var")
-param_target = ParameterString(name="target", default_value="target")
+from sagemaker.workflow.steps import ProcessingStep
+from sagemaker.workflow.pipeline import Pipeline
 
 
-def get_pipeline(region, role, default_bucket, base_job_prefix):
-    sagemaker_session = sagemaker.Session(default_bucket=default_bucket)
+def get_pipeline(
+    region=None,
+    role=None,
+    default_bucket=None,
+    base_job_prefix="iris-mlops",
+):
+    # Sesión de SageMaker
+    region = region or os.environ.get("AWS_REGION", "us-east-1")
+    sagemaker_session = sagemaker.session.Session()
+    role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
+    default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
-    # Processor para ejecutar Kedro
-    kedro_processor = ScriptProcessor(
-        image_uri=sagemaker.image_uris.retrieve(
-            framework="sklearn", region=region, version="1.0-1"
-        ),
-        command=["python3"],
+    # === Parámetros del pipeline (simulan tus CLI params) ===
+    param_product = ParameterString(name="Product", default_value="CDT")
+    param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
+    param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
+    param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
+
+    # === Processor con imagen preconstruida ===
+    kedro_processor = SKLearnProcessor(
+        framework_version="1.2-1",
         role=role,
         instance_type="ml.t3.medium",
         instance_count=1,
-        base_job_name=f"{base_job_prefix}-kedro",
+        base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
     )
 
-    # Paso: ejecutar Kedro
-    kedro_step = kedro_processor.run(
+    # === Paso único: ejecutar Kedro Backtesting ===
+    kedro_step = ProcessingStep(
+        name="TradeOffBiasVariance",
+        processor=kedro_processor,
         code="src/processing/run_kedro.py",
-        inputs=[  # ✅ SOLO UN INPUT
+        inputs=[
             ProcessingInput(
-                source=".",  # todo el repo
-                destination="/opt/ml/processing/code",  
+                source=".",  # El repo traído por CodePipeline
+                destination="/opt/ml/processing/code",
                 input_name="source",
-            ),
+            )
+        ],
+        outputs=[
+            ProcessingOutput(
+                source="/opt/ml/processing/output",
+                destination=f"s3://{default_bucket}/09-backtesting",
+                output_name="backtesting_output",
+            )
         ],
         job_arguments=[
             "--product", param_product,
@@ -45,7 +62,7 @@ def get_pipeline(region, role, default_bucket, base_job_prefix):
         ],
     )
 
-    # Definir pipeline
+    # === Pipeline principal ===
     pipeline = Pipeline(
         name="iris-mlops-pipeline-TradeOffBiasVariance",
         parameters=[param_product, param_fecha, param_var, param_target],
@@ -58,16 +75,17 @@ def get_pipeline(region, role, default_bucket, base_job_prefix):
 
 if __name__ == "__main__":
     region = os.environ.get("AWS_REGION", "us-east-1")
-    role = os.environ.get("SAGEMAKER_EXECUTION_ROLE_ARN")
-    default_bucket = os.environ.get("S3_ARTIFACT_BUCKET")
+    role = os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
+    default_bucket = os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
     base_job_prefix = os.environ.get("SAGEMAKER_BASE_JOB_PREFIX", "iris-mlops")
 
-    pipeline = get_pipeline(region, role, default_bucket, base_job_prefix)
-
-    print(f"[INFO] Registrando pipeline en SageMaker: {pipeline.name}")
-    pipeline.upsert(role_arn=role)
-    print(f"[INFO] Pipeline registrado correctamente: {pipeline.name}")
-    print("[INFO] Ahora puedes lanzarlo con:")
-    print(
-        f"aws sagemaker start-pipeline-execution --pipeline-name {pipeline.name} --region {region}"
+    pipeline = get_pipeline(
+        region=region,
+        role=role,
+        default_bucket=default_bucket,
+        base_job_prefix=base_job_prefix,
     )
+
+    print(f"Upserting SageMaker Pipeline: {pipeline.name}")
+    pipeline.upsert(role_arn=role)
+    print(f"Pipeline {pipeline.name} creado/actualizado correctamente ✅")
