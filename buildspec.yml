@@ -24,7 +24,7 @@ phases:
     commands:
       - echo "=== Construyendo imagen Docker con Kedro ==="
       - docker build -t iris-mlops .
-      # ✅ Validación: que el paquete processing exista dentro de la imagen
+      # Validación barata: que se pueda importar el paquete
       - docker run --rm iris-mlops python -c "import processing; print('processing OK')"
       - docker tag iris-mlops:latest 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
 

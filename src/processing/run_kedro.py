@@ -3,25 +3,24 @@ from pathlib import Path
 from kedro.framework.session import KedroSession
 from kedro.framework.project import configure_project
 
-# --- Parámetros (vienen por ENV que setea SageMaker) ---
+# --- Parámetros (se pueden sobreescribir por ENV) ---
 PRODUCT = os.getenv("PARAM_PRODUCT", "CDT")
 FECHA = os.getenv("PARAM_FECHA_EJECUCION", "2025-07-10")
 VAR_APERTURA = os.getenv("PARAM_VARIABLE_APERTURA", "cdt_cant_aper_mes")
 TARGET = os.getenv("PARAM_TARGET", "cdt_cant_ap_group3")
 
-# --- Dónde estará SIEMPRE la configuración dentro de SageMaker ---
-# La montaremos explícitamente en el ProcessingStep a esta ruta:
+# --- Ubicación de la configuración montada por SageMaker Processing ---
 SAFE_CONF_DIR = os.getenv("KEDRO_CONF_DIR", "/opt/ml/processing/conf_mlops")
-KEDRO_ENV = os.getenv("KEDRO_ENV", "base")  # NO "local", usa base (existe en conf_mlops/base)
+KEDRO_ENV = os.getenv("KEDRO_ENV", "base")  # usar "base"
 
 def main():
-    # project_path: código que SageMaker sube como "code" -> /opt/ml/processing/input/code
-    project_path = Path(__file__).resolve().parents[2]  # /opt/ml/processing/input/code/../../ -> /opt/ml/processing
+    # /opt/ml/processing/input/code  -> .../../../ = /opt/ml/processing
+    project_path = Path(__file__).resolve().parents[2]
 
-    # Forzar a Kedro a mirar el directorio de conf que montamos en el step
+    # Obliga a Kedro a leer 'conf_mlops' que montamos en el step
     os.environ["KEDRO_CONFIG_SOURCE"] = SAFE_CONF_DIR
 
-    # Importante: inicializa el proyecto con el package_name real (instalado por pip -e .)
+    # Inicializa el proyecto por package_name (instalado con pip -e .)
     configure_project("processing")
 
     params = {
@@ -31,7 +30,7 @@ def main():
         "target": TARGET,
     }
 
-    # Crea la sesión apuntando al env "base" (evitamos buscar 'local')
+    # Crea la sesión apuntando al env "base"
     with KedroSession.create(package_name="processing", project_path=project_path, env=KEDRO_ENV) as session:
         context = session.load_context()
 

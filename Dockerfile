@@ -10,7 +10,7 @@ COPY requirements.txt ./requirements.txt
 RUN uv pip install --system --no-cache-dir -r requirements.txt \
     && uv pip install --system --no-cache-dir scikit-learn==1.4.0
 
-# Copiamos el repo y lo instalamos como paquete con root (evita Permission denied en egg-info)
+# Copiamos el repo y lo instalamos como paquete
 WORKDIR /opt/project
 COPY . .
 RUN pip install -e .
@@ -21,17 +21,17 @@ ARG KEDRO_GID=0
 RUN groupadd -f -g ${KEDRO_GID} kedro_group && \
     useradd -m -d /home/kedro_docker -s /bin/bash -g ${KEDRO_GID} -u ${KEDRO_UID} kedro_docker
 
-# Privilegios sobre /opt/project (por si en runtime lees algo de ahí)
+# Permisos
 RUN chown -R ${KEDRO_UID}:${KEDRO_GID} /opt/project
 
 # Entraremos como usuario seguro
 USER kedro_docker
 WORKDIR /opt/project
 
-# (Opcional) puerto
+# (Opcional)
 EXPOSE 8888
 
-# Ejecuta tu script
+# Por defecto (cuando pruebes local): ejecuta el runner
 CMD ["python", "src/processing/run_kedro.py"]
 
 
