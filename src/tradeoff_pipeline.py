@@ -5,6 +5,7 @@ from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
 
+
 def get_pipeline(
     region=None,
     role=None,
@@ -19,13 +20,12 @@ def get_pipeline(
     account_id = os.environ.get("ACCOUNT_ID", "503427799533")
     ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
 
-    # Parámetros de pipeline (opcionales, sobreescriben lo del runner via ENV)
+    # Parámetros
     param_product = ParameterString(name="Product", default_value="CDT")
     param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # Procesador (imagen ECR que ya construiste)
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -44,15 +44,14 @@ def get_pipeline(
         },
     )
 
-    # OJO: code="." empaqueta tu repo (incluye src y conf_mlops).
-    # job_arguments ejecuta el runner; evita el error "ContainerArguments=0"
+    # 👇 Aquí la corrección: el parámetro "code" debe apuntar a un archivo .py, no a un directorio
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code=".",  # empaqueta todo el repo
+        code="src/processing/run_kedro.py",
         inputs=[
             ProcessingInput(
-                source="conf_mlops",  # esta carpeta DEBE existir en el repo
+                source="conf_mlops",
                 destination="/opt/ml/processing/conf_mlops",
                 input_name="conf_mlops",
             )
@@ -64,7 +63,6 @@ def get_pipeline(
                 output_name="backtesting_output",
             )
         ],
-        job_arguments=["src/processing/run_kedro.py"],  # <-- argumento requerido
     )
 
     pipeline = Pipeline(
@@ -73,6 +71,7 @@ def get_pipeline(
         steps=[kedro_step],
         sagemaker_session=sagemaker_session,
     )
+
     return pipeline
 
 
