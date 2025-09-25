@@ -16,9 +16,11 @@ def get_pipeline(
     region = region or os.environ.get("AWS_REGION", "us-east-1")
     sagemaker_session = sagemaker.session.Session()
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
-    default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
+    default_bucket = default_bucket or os.environ.get(
+        "S3_ARTIFACT_BUCKET", "iris-mlops-artifacts"
+    )
 
-    # === Ruta de la imagen en ECR ===
+    # === Ruta de tu imagen en ECR (la que subes con CodeBuild) ===
     account_id = os.environ.get("ACCOUNT_ID", "503427799533")
     ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
 
@@ -28,7 +30,7 @@ def get_pipeline(
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # === Processor con tu imagen personalizada ===
+    # === Processor con tu imagen personalizada (Docker en ECR) ===
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -36,14 +38,14 @@ def get_pipeline(
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
-        command=["kedro"],  # ejecuta binario kedro dentro del contenedor
+        command=["kedro"],  # ejecuta el binario kedro dentro de la imagen
     )
 
     # === Paso único: ejecutar Kedro Backtesting ===
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code=".",   # ruta dummy, evita ValueError en SageMaker
+        code="src/processing/run_kedro.py",  # ✅ archivo válido, no un directorio
         inputs=[
             ProcessingInput(
                 source="conf_mlops",
@@ -59,9 +61,6 @@ def get_pipeline(
             )
         ],
         job_arguments=[
-            "run",
-            "--pipeline", "backtesting",
-            "--conf-source", "./conf_mlops/",
             "--product", param_product,
             "--fecha_ejecucion", param_fecha,
             "--variable_apertura", param_var,
