@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
 from kedro.framework.session import KedroSession
-from kedro.framework.startup import bootstrap_project
+from kedro.framework.project import configure_project
 
 # Parámetros por defecto
 PRODUCT = os.getenv("PARAM_PRODUCT", "CDT")
@@ -12,8 +12,8 @@ TARGET = os.getenv("PARAM_TARGET", "cdt_cant_ap_group3")
 def main():
     project_path = Path(__file__).resolve().parents[2]
 
-    # 👇 bootstrap para inicializar settings
-    bootstrap_project(project_path)
+    # 👇 Forzamos el package_name (tu carpeta en src/)
+    configure_project("processing")
 
     params = {
         "product": PRODUCT,
@@ -22,8 +22,8 @@ def main():
         "target": TARGET
     }
 
-    # 👇 ahora pasamos package_name = "processing" (carpeta bajo src/)
-    with KedroSession.create(package_name="processing", project_path=project_path) as session:
+    # 👇 Usamos ese mismo nombre aquí
+    with KedroSession.create("processing", project_path=project_path) as session:
         session.run(pipeline_name="backtesting", extra_params=params)
 
 if __name__ == "__main__":
