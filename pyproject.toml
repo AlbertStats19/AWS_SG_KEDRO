@@ -1,0 +1,3 @@
+[tool.kedro]
+package_name = "processing"
+project_name = "AWS_SG_KEDRO"
