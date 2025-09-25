@@ -12,23 +12,23 @@ def get_pipeline(
     default_bucket=None,
     base_job_prefix="iris-mlops",
 ):
-    # Sesión SageMaker
+    # Sesión de SageMaker
     region = region or os.environ.get("AWS_REGION", "us-east-1")
     sagemaker_session = sagemaker.session.Session()
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
     default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
-    # Imagen en ECR
+    # === Ruta de tu imagen en ECR (la que subes con CodeBuild) ===
     account_id = os.environ.get("ACCOUNT_ID", "503427799533")
     ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
 
-    # Parámetros del pipeline
+    # === Parámetros del pipeline ===
     param_product = ParameterString(name="Product", default_value="CDT")
     param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # Processor con Kedro CLI como entrypoint
+    # === Processor con tu imagen personalizada (Docker en ECR) ===
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -36,13 +36,14 @@ def get_pipeline(
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
-        command=["kedro"],  # se ejecuta directamente kedro CLI
+        command=["kedro"],  # ejecuta el binario kedro dentro de la imagen
     )
 
-    # Paso Kedro Backtesting
+    # === Paso único: ejecutar Kedro Backtesting ===
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
+        code="src/processing/run_kedro.py",   # se ignora porque CMD de la imagen es kedro
         inputs=[
             ProcessingInput(
                 source="conf_mlops",
@@ -58,9 +59,6 @@ def get_pipeline(
             )
         ],
         job_arguments=[
-            "run",
-            "--pipeline", "backtesting",
-            "--conf-source", "./conf_mlops/",
             "--product", param_product,
             "--fecha_ejecucion", param_fecha,
             "--variable_apertura", param_var,
@@ -68,7 +66,7 @@ def get_pipeline(
         ],
     )
 
-    # Pipeline principal
+    # === Pipeline principal ===
     pipeline = Pipeline(
         name="iris-mlops-pipeline-TradeOffBiasVariance",
         parameters=[param_product, param_fecha, param_var, param_target],
