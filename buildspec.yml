@@ -2,37 +2,36 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION: "us-east-1" # será sobreescrito por CloudFormation
-    S3_ARTIFACT_BUCKET: "iris-mlops-artifacts" # bucket de artifacts
-    S3_KEDRO_DATA_BUCKET: "iris-mlops-kedro-data" # bucket con datos Kedro
-    SAGEMAKER_EXECUTION_ROLE_ARN: "arn:aws:iam::123456789012:role/SageMakerExecutionRole" # placeholder
-    SAGEMAKER_BASE_JOB_PREFIX: "iris-mlops" # prefijo de SageMaker jobs
+    AWS_REGION: "us-east-1"
+    S3_ARTIFACT_BUCKET: "iris-mlops-artifacts"
+    S3_KEDRO_DATA_BUCKET: "iris-mlops-kedro-data"
+    SAGEMAKER_EXECUTION_ROLE_ARN: "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+    SAGEMAKER_BASE_JOB_PREFIX: "iris-mlops"
 
 phases:
   install:
     commands:
-      - echo "=== Instalando dependencias base ==="
+      - echo "=== Instalando dependencias base para CodeBuild ==="
       - python -m pip install --upgrade pip
-      - pip install -r requirements.txt
-      - pip install sagemaker
-      - pip install boto3
 
   pre_build:
     commands:
-      - echo "=== Pre-build checks ==="
-      - ls -R conf_mlops/ || echo "Directorio conf_mlops no encontrado"
-      - ls -R src/ || echo "Directorio src no encontrado"
+      - echo "Autenticando en Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com
 
   build:
     commands:
-      - echo "=== Ejecutando TradeOffBiasVariance Pipeline en SageMaker ==="
-      - python src/tradeoff_pipeline.py
+      - echo "=== Construyendo imagen Docker con Kedro ==="
+      - docker build -t iris-mlops .
+      - docker tag iris-mlops:latest 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
 
   post_build:
     commands:
-      - echo "=== Pipeline enviado a SageMaker ==="
-      - echo "Revisa la consola de SageMaker para el job TradeOffBiasVariance"
-      - echo "Build completado."
+      - echo "Empujando imagen a ECR..."
+      - docker push 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
+      - echo "Imagen subida a ECR correctamente"
+      - echo "Ejecutando pipeline en SageMaker..."
+      - python src/tradeoff_pipeline.py
 
 artifacts:
   files:

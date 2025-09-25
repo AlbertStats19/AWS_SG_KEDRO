@@ -1,7 +1,6 @@
 import os
 import sagemaker
-from sagemaker.sklearn.processing import SKLearnProcessor
-from sagemaker.processing import ProcessingInput, ProcessingOutput
+from sagemaker.processing import ScriptProcessor, ProcessingInput, ProcessingOutput
 from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
@@ -19,28 +18,32 @@ def get_pipeline(
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
     default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
+    # === Ruta de tu imagen en ECR (la que subes con CodeBuild) ===
+    account_id = os.environ.get("ACCOUNT_ID", "503427799533")
+    ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
+
     # === Parámetros del pipeline ===
     param_product = ParameterString(name="Product", default_value="CDT")
     param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # === Processor con imagen preconstruida ===
-    kedro_processor = SKLearnProcessor(
-        framework_version="1.2-1",
+    # === Processor con tu imagen personalizada (Docker en ECR) ===
+    kedro_processor = ScriptProcessor(
+        image_uri=ecr_image_uri,
         role=role,
         instance_type="ml.t3.medium",
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
+        command=["kedro"],  # ejecuta el binario kedro dentro de la imagen
     )
 
     # === Paso único: ejecutar Kedro Backtesting ===
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",   # tu script
-        dependencies=["requirements.txt"],   # 👈 instala Kedro antes de ejecutar
+        code="src/processing/run_kedro.py",   # se ignora porque CMD de la imagen es kedro
         inputs=[
             ProcessingInput(
                 source="conf_mlops",
@@ -56,10 +59,10 @@ def get_pipeline(
             )
         ],
         job_arguments=[
-            "--product", param_product,
-            "--fecha_ejecucion", param_fecha,
-            "--variable_apertura", param_var,
-            "--target", param_target,
+            "run",
+            "--pipeline", "backtesting",
+            "--params", f"product={param_product},fecha_ejecucion={param_fecha},"
+                        f"variable_apertura={param_var},target={param_target}",
         ],
     )
 

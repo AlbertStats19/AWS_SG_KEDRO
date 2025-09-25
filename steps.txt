@@ -48,7 +48,12 @@ aws sagemaker list-pipelines --region us-east-1
 
 aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
 
-# 6. Pasos de la Ejecución
+# 6. KEDRO DOCKER
+aws ecr create-repository --repository-name iris-mlops --region us-east-1 --image-scanning-configuration scanOnPush=true
+
+aws ecr describe-repositories --repository-names iris-mlops --region us-east-1
+
+# 7. Pasos de la Ejecución
 aws sagemaker list-pipeline-executions --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
 
 aws sagemaker list-pipeline-execution-steps --pipeline-execution-arn arn:aws:sagemaker:us-east-1:503427799533:pipeline/iris-mlops-pipeline-TradeOffBiasVariance/execution/6u4y5nk1ilf5 --region us-east-1
@@ -58,3 +63,5 @@ aws sagemaker list-pipeline-execution-steps --pipeline-execution-arn $(aws sagem
 aws sagemaker describe-processing-job --processing-job-name pipelines-fhv8urhpsw91-TradeOffBiasVariance-oBK3mwh4o3 --region us-east-1
 
 aws logs describe-log-streams --log-group-name /aws/sagemaker/ProcessingJobs --log-stream-name-prefix pipelines-fhv8urhpsw91-TradeOffBiasVariance-oBK3mwh4o3 --region us-east-1
+
+aws logs get-log-events --log-group-name /aws/sagemaker/ProcessingJobs --log-stream-name pipelines-fhv8urhpsw91-TradeOffBiasVariance-oBK3mwh4o3/algo-1-1758753442 --region us-east-1 --limit 100
