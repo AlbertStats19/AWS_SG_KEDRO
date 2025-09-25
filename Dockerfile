@@ -14,7 +14,7 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt \
 ARG KEDRO_UID=999
 ARG KEDRO_GID=0
 RUN groupadd -f -g ${KEDRO_GID} kedro_group && \
-    useradd -m -d /home/kedro_docker -s /bin/bash -g ${KEDRO_GID} -u ${KEDRO_UID} kedro_docker
+    useradd -m -d /home/kedro_docker -s /bin/bash -g ${KEDRO_GID} kedro_docker
 
 WORKDIR /home/kedro_docker
 USER kedro_docker
@@ -22,9 +22,11 @@ USER kedro_docker
 # Copiar TODO tu proyecto dentro del contenedor (respetando .dockerignore)
 COPY --chown=${KEDRO_UID}:${KEDRO_GID} . .
 
+# 👇 Instalar el repo como paquete (usa pyproject.toml y expone "processing")
+RUN pip install -e .
+
 # Puerto para Jupyter o debugging (opcional)
 EXPOSE 8888
 
 # Comando por defecto: correr tu pipeline Kedro
-# CMD ["kedro", "run"]
 CMD ["python", "src/processing/run_kedro.py"]

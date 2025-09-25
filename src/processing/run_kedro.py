@@ -1,5 +1,4 @@
 import os
-import sys
 from pathlib import Path
 from kedro.framework.session import KedroSession
 from kedro.framework.project import configure_project
@@ -11,15 +10,10 @@ VAR_APERTURA = os.getenv("PARAM_VARIABLE_APERTURA", "cdt_cant_aper_mes")
 TARGET = os.getenv("PARAM_TARGET", "cdt_cant_ap_group3")
 
 def main():
+    # Ruta al proyecto
     project_path = Path(__file__).resolve().parents[2]
 
-    # 👇 Fuerza a Python a ver la carpeta src/
-    sys.path.append(str(project_path / "src"))
-
-    # 👇 Apunta a conf_mlops (no conf/)
-    os.environ["KEDRO_CONFIG_SOURCE"] = str(project_path / "conf_mlops")
-
-    # 👇 Inicializa el proyecto
+    # 👇 inicializa el proyecto Kedro con el package_name que definiste en pyproject.toml
     configure_project("processing")
 
     params = {
@@ -29,10 +23,12 @@ def main():
         "target": TARGET,
     }
 
-    with KedroSession.create("processing", project_path=project_path) as session:
+    # Crear sesión Kedro
+    with KedroSession.create(package_name="processing", project_path=project_path) as session:
         context = session.load_context()
 
-        print("[DEBUG] Datasets configurados en catalog.yml:")
+        # 🚀 Depuración: listar datasets disponibles
+        print("[DEBUG] Datasets en catalog.yml:")
         for ds in context.catalog.list():
             print(f" - {ds}")
 
@@ -41,7 +37,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 #import os
 #import subprocess
