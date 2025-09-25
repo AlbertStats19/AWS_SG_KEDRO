@@ -26,4 +26,5 @@ COPY --chown=${KEDRO_UID}:${KEDRO_GID} . .
 EXPOSE 8888
 
 # Comando por defecto: correr tu pipeline Kedro
-CMD ["kedro", "run"]
+# CMD ["kedro", "run"]
+CMD ["python", "src/processing/run_kedro.py"]
