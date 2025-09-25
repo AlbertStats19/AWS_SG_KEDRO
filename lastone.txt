@@ -1,0 +1,216 @@
+run_kedro.py:
+
+import os
+from pathlib import Path
+from kedro.framework.session import KedroSession
+from kedro.framework.project import configure_project
+
+# Parámetros por defecto (se sobreescriben con ENV en SageMaker)
+PRODUCT = os.getenv("PARAM_PRODUCT", "CDT")
+FECHA = os.getenv("PARAM_FECHA_EJECUCION", "2025-07-10")
+VAR_APERTURA = os.getenv("PARAM_VARIABLE_APERTURA", "cdt_cant_aper_mes")
+TARGET = os.getenv("PARAM_TARGET", "cdt_cant_ap_group3")
+
+def main():
+    # Ruta al proyecto
+    project_path = Path(__file__).resolve().parents[2]
+
+    # 👇 inicializa el proyecto Kedro con el package_name que definiste en pyproject.toml
+    configure_project("processing")
+
+    params = {
+        "product": PRODUCT,
+        "fecha_ejecucion": FECHA,
+        "variable_apertura": VAR_APERTURA,
+        "target": TARGET,
+    }
+
+    # Crear sesión Kedro
+    with KedroSession.create(package_name="processing", project_path=project_path) as session:
+        context = session.load_context()
+
+        # 🚀 Depuración: listar datasets disponibles
+        print("[DEBUG] Datasets en catalog.yml:")
+        for ds in context.catalog.list():
+            print(f" - {ds}")
+
+        print(f"[INFO] Ejecutando pipeline 'backtesting' con parámetros: {params}")
+        session.run(pipeline_name="backtesting", extra_params=params)
+
+if __name__ == "__main__":
+    main()
+
+
+tradeoff_pipeline.py:
+
+import os
+import sagemaker
+from sagemaker.processing import ScriptProcessor, ProcessingInput, ProcessingOutput
+from sagemaker.workflow.parameters import ParameterString
+from sagemaker.workflow.steps import ProcessingStep
+from sagemaker.workflow.pipeline import Pipeline
+
+
+def get_pipeline(
+    region=None,
+    role=None,
+    default_bucket=None,
+    base_job_prefix="iris-mlops",
+):
+    # Sesión de SageMaker
+    region = region or os.environ.get("AWS_REGION", "us-east-1")
+    sagemaker_session = sagemaker.session.Session()
+    role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
+    default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
+
+    # Ruta de la imagen en ECR
+    account_id = os.environ.get("ACCOUNT_ID", "503427799533")
+    ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
+
+    # Parámetros del pipeline
+    param_product = ParameterString(name="Product", default_value="CDT")
+    param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
+    param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
+    param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
+
+    # Processor que ejecuta Python directamente
+    kedro_processor = ScriptProcessor(
+        image_uri=ecr_image_uri,
+        role=role,
+        instance_type="ml.t3.medium",
+        instance_count=1,
+        base_job_name=f"{base_job_prefix}-tradeoff",
+        sagemaker_session=sagemaker_session,
+        command=["python3"],  # ejecuta script Python
+    )
+
+    # Paso que llama a tu script run_kedro.py
+    kedro_step = ProcessingStep(
+        name="TradeOffBiasVariance",
+        processor=kedro_processor,
+        code="src/processing/run_kedro.py",   # script Python en tu repo
+        inputs=[
+            ProcessingInput(
+                source="conf_mlops",
+                destination="/opt/ml/processing/conf_mlops",
+                input_name="conf_mlops",
+            )
+        ],
+        outputs=[
+            ProcessingOutput(
+                source="/opt/ml/processing/output",
+                destination=f"s3://{default_bucket}/09-backtesting",
+                output_name="backtesting_output",
+            )
+        ],
+        job_arguments=[
+            "--product", param_product,
+            "--fecha_ejecucion", param_fecha,
+            "--variable_apertura", param_var,
+            "--target", param_target,
+        ],
+    )
+
+    # Pipeline principal
+    pipeline = Pipeline(
+        name="iris-mlops-pipeline-TradeOffBiasVariance",
+        parameters=[param_product, param_fecha, param_var, param_target],
+        steps=[kedro_step],
+        sagemaker_session=sagemaker_session,
+    )
+
+    return pipeline
+
+
+if __name__ == "__main__":
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    role = os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
+    default_bucket = os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
+    base_job_prefix = os.environ.get("SAGEMAKER_BASE_JOB_PREFIX", "iris-mlops")
+
+    pipeline = get_pipeline(
+        region=region,
+        role=role,
+        default_bucket=default_bucket,
+        base_job_prefix=base_job_prefix,
+    )
+
+    print(f"[INFO] Upserting SageMaker Pipeline: {pipeline.name}")
+    pipeline.upsert(role_arn=role)
+    print(f"[INFO] Pipeline {pipeline.name} creado/actualizado correctamente ✅")
+
+
+Dockerfile:
+
+FROM public.ecr.aws/docker/library/python:3.11-slim as runtime-environment
+
+RUN python -m pip install -U "pip>=21.2"
+RUN pip install uv
+
+COPY requirements.txt ./requirements.txt
+RUN uv pip install --system --no-cache-dir -r requirements.txt \
+    && uv pip install --system --no-cache-dir scikit-learn==1.4.0
+
+# Copiar el proyecto ANTES de crear el usuario
+WORKDIR /opt/project
+COPY . .
+
+# Instalar el paquete kedro en editable
+RUN pip install -e .
+
+# Crear usuario no root
+ARG KEDRO_UID=999
+ARG KEDRO_GID=0
+RUN groupadd -f -g ${KEDRO_GID} kedro_group && \
+    useradd -m -d /home/kedro_docker -s /bin/bash -g ${KEDRO_GID} -u ${KEDRO_UID} kedro_docker
+
+USER kedro_docker
+WORKDIR /home/kedro_docker
+
+EXPOSE 8888
+
+CMD ["python", "src/processing/run_kedro.py"]
+
+
+buildspec.yml:
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: "us-east-1"
+    S3_ARTIFACT_BUCKET: "iris-mlops-artifacts"
+    S3_KEDRO_DATA_BUCKET: "iris-mlops-kedro-data"
+    SAGEMAKER_EXECUTION_ROLE_ARN: "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+    SAGEMAKER_BASE_JOB_PREFIX: "iris-mlops"
+
+phases:
+  install:
+    commands:
+      - echo "=== Instalando dependencias base para CodeBuild ==="
+      - python -m pip install --upgrade pip
+      # 🚀 Instalar librerías necesarias para ejecutar el pipeline
+      - pip install sagemaker boto3
+
+  pre_build:
+    commands:
+      - echo "Autenticando en Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com
+
+  build:
+    commands:
+      - echo "=== Construyendo imagen Docker con Kedro ==="
+      - docker build -t iris-mlops .
+      - docker tag iris-mlops:latest 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
+
+  post_build:
+    commands:
+      - echo "Empujando imagen a ECR..."
+      - docker push 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
+      - echo "Imagen subida a ECR correctamente"
+      - echo "Ejecutando pipeline en SageMaker..."
+      - python src/tradeoff_pipeline.py
+
+artifacts:
+  files:
+    - '**/*'
+

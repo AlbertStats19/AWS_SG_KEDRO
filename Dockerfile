@@ -1,32 +1,38 @@
+# Imagen base
 FROM public.ecr.aws/docker/library/python:3.11-slim as runtime-environment
 
+# Pip y uv
 RUN python -m pip install -U "pip>=21.2"
 RUN pip install uv
 
+# Reqs del proyecto
 COPY requirements.txt ./requirements.txt
 RUN uv pip install --system --no-cache-dir -r requirements.txt \
     && uv pip install --system --no-cache-dir scikit-learn==1.4.0
 
-# Copiar el proyecto ANTES de crear el usuario
+# Copiamos el repo y lo instalamos como paquete con root (evita Permission denied en egg-info)
 WORKDIR /opt/project
 COPY . .
-
-# Instalar el paquete kedro en editable
 RUN pip install -e .
 
-# Crear usuario no root
+# Creamos usuario no-root
 ARG KEDRO_UID=999
 ARG KEDRO_GID=0
 RUN groupadd -f -g ${KEDRO_GID} kedro_group && \
     useradd -m -d /home/kedro_docker -s /bin/bash -g ${KEDRO_GID} -u ${KEDRO_UID} kedro_docker
 
-USER kedro_docker
-WORKDIR /home/kedro_docker
+# Privilegios sobre /opt/project (por si en runtime lees algo de ahí)
+RUN chown -R ${KEDRO_UID}:${KEDRO_GID} /opt/project
 
+# Entraremos como usuario seguro
+USER kedro_docker
+WORKDIR /opt/project
+
+# (Opcional) puerto
 EXPOSE 8888
 
+# Ejecuta tu script
 CMD ["python", "src/processing/run_kedro.py"]
-
 
 
 ## Imagen base ligera de Python desde AWS Public ECR

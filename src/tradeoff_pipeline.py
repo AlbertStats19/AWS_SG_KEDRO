@@ -5,30 +5,26 @@ from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
 
-
 def get_pipeline(
     region=None,
     role=None,
     default_bucket=None,
     base_job_prefix="iris-mlops",
 ):
-    # Sesión de SageMaker
     region = region or os.environ.get("AWS_REGION", "us-east-1")
     sagemaker_session = sagemaker.session.Session()
     role = role or os.environ["SAGEMAKER_EXECUTION_ROLE_ARN"]
     default_bucket = default_bucket or os.environ.get("S3_ARTIFACT_BUCKET", "iris-mlops-artifacts")
 
-    # Ruta de la imagen en ECR
     account_id = os.environ.get("ACCOUNT_ID", "503427799533")
     ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
 
-    # Parámetros del pipeline
+    # Parámetros
     param_product = ParameterString(name="Product", default_value="CDT")
     param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
     param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
-    # Processor que ejecuta Python directamente
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -36,17 +32,26 @@ def get_pipeline(
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
-        command=["python3"],  # ejecuta script Python
+        command=["python3"],
+        # ✅ Variables de entorno que tu script usará
+        env={
+            "KEDRO_CONF_DIR": "/opt/ml/processing/conf_mlops",
+            "KEDRO_ENV": "base",
+            "PARAM_PRODUCT": param_product,
+            "PARAM_FECHA_EJECUCION": param_fecha,
+            "PARAM_VARIABLE_APERTURA": param_var,
+            "PARAM_TARGET": param_target,
+        },
     )
 
-    # Paso que llama a tu script run_kedro.py
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",   # script Python en tu repo
+        code="src/processing/run_kedro.py",
         inputs=[
+            # ✅ Monta la carpeta de configuración EXACTAMENTE donde la espera run_kedro.py
             ProcessingInput(
-                source="conf_mlops",
+                source="conf_mlops",  # carpeta de tu repo (CodePipeline la sube)
                 destination="/opt/ml/processing/conf_mlops",
                 input_name="conf_mlops",
             )
@@ -58,15 +63,10 @@ def get_pipeline(
                 output_name="backtesting_output",
             )
         ],
-        job_arguments=[
-            "--product", param_product,
-            "--fecha_ejecucion", param_fecha,
-            "--variable_apertura", param_var,
-            "--target", param_target,
-        ],
+        # No pasamos args por CLI; todo va por ENV
+        job_arguments=[],
     )
 
-    # Pipeline principal
     pipeline = Pipeline(
         name="iris-mlops-pipeline-TradeOffBiasVariance",
         parameters=[param_product, param_fecha, param_var, param_target],
@@ -75,7 +75,6 @@ def get_pipeline(
     )
 
     return pipeline
-
 
 if __name__ == "__main__":
     region = os.environ.get("AWS_REGION", "us-east-1")

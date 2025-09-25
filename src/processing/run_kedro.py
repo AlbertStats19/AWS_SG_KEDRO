@@ -3,17 +3,25 @@ from pathlib import Path
 from kedro.framework.session import KedroSession
 from kedro.framework.project import configure_project
 
-# Parámetros por defecto (se sobreescriben con ENV en SageMaker)
+# --- Parámetros (vienen por ENV que setea SageMaker) ---
 PRODUCT = os.getenv("PARAM_PRODUCT", "CDT")
 FECHA = os.getenv("PARAM_FECHA_EJECUCION", "2025-07-10")
 VAR_APERTURA = os.getenv("PARAM_VARIABLE_APERTURA", "cdt_cant_aper_mes")
 TARGET = os.getenv("PARAM_TARGET", "cdt_cant_ap_group3")
 
-def main():
-    # Ruta al proyecto
-    project_path = Path(__file__).resolve().parents[2]
+# --- Dónde estará SIEMPRE la configuración dentro de SageMaker ---
+# La montaremos explícitamente en el ProcessingStep a esta ruta:
+SAFE_CONF_DIR = os.getenv("KEDRO_CONF_DIR", "/opt/ml/processing/conf_mlops")
+KEDRO_ENV = os.getenv("KEDRO_ENV", "base")  # NO "local", usa base (existe en conf_mlops/base)
 
-    # 👇 inicializa el proyecto Kedro con el package_name que definiste en pyproject.toml
+def main():
+    # project_path: código que SageMaker sube como "code" -> /opt/ml/processing/input/code
+    project_path = Path(__file__).resolve().parents[2]  # /opt/ml/processing/input/code/../../ -> /opt/ml/processing
+
+    # Forzar a Kedro a mirar el directorio de conf que montamos en el step
+    os.environ["KEDRO_CONFIG_SOURCE"] = SAFE_CONF_DIR
+
+    # Importante: inicializa el proyecto con el package_name real (instalado por pip -e .)
     configure_project("processing")
 
     params = {
@@ -23,11 +31,11 @@ def main():
         "target": TARGET,
     }
 
-    # Crear sesión Kedro
-    with KedroSession.create(package_name="processing", project_path=project_path) as session:
+    # Crea la sesión apuntando al env "base" (evitamos buscar 'local')
+    with KedroSession.create(package_name="processing", project_path=project_path, env=KEDRO_ENV) as session:
         context = session.load_context()
 
-        # 🚀 Depuración: listar datasets disponibles
+        print(f"[INFO] KEDRO_CONFIG_SOURCE={SAFE_CONF_DIR}  KEDRO_ENV={KEDRO_ENV}")
         print("[DEBUG] Datasets en catalog.yml:")
         for ds in context.catalog.list():
             print(f" - {ds}")
@@ -37,6 +45,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 #import os
 #import subprocess

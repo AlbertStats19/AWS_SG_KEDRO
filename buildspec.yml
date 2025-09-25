@@ -13,7 +13,6 @@ phases:
     commands:
       - echo "=== Instalando dependencias base para CodeBuild ==="
       - python -m pip install --upgrade pip
-      # 🚀 Instalar librerías necesarias para ejecutar el pipeline
       - pip install sagemaker boto3
 
   pre_build:
@@ -25,6 +24,8 @@ phases:
     commands:
       - echo "=== Construyendo imagen Docker con Kedro ==="
       - docker build -t iris-mlops .
+      # ✅ Validación: que el paquete processing exista dentro de la imagen
+      - docker run --rm iris-mlops python -c "import processing; print('processing OK')"
       - docker tag iris-mlops:latest 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
 
   post_build:
