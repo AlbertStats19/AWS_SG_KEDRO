@@ -36,14 +36,14 @@ def get_pipeline(
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
-        command=["python", "-m", "kedro"],  # ejecutar Kedro como módulo
+        command=["kedro"],  # ejecuta el binario kedro dentro de la imagen
     )
 
     # === Paso único: ejecutar Kedro Backtesting ===
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",   # se ignora porque mandamos comando directo
+        code="src/processing/run_kedro.py",   # se ignora porque CMD de la imagen es kedro
         inputs=[
             ProcessingInput(
                 source="conf_mlops",
@@ -59,11 +59,10 @@ def get_pipeline(
             )
         ],
         job_arguments=[
-            "run",
-            "--pipeline", "backtesting",
-            "--params", f"product={param_product},fecha_ejecucion={param_fecha},"
-                        f"variable_apertura={param_var},target={param_target}",
-            "--conf-source=./conf_mlops/",
+            "--product", param_product,
+            "--fecha_ejecucion", param_fecha,
+            "--variable_apertura", param_var,
+            "--target", param_target,
         ],
     )
 
