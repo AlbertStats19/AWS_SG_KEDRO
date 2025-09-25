@@ -1,11 +1,11 @@
-# Imagen base ligera de Python
-FROM python:3.11-slim as runtime-environment
+# Imagen base ligera de Python desde AWS Public ECR
+FROM public.ecr.aws/docker/library/python:3.11-slim as runtime-environment
 
 # Actualizar pip e instalar uv (gestor rápido de pip)
 RUN python -m pip install -U "pip>=21.2"
 RUN pip install uv
 
-# Copiar requirements de tu repo y instalarlos
+# Copiar requirements de tu repo e instalarlos
 COPY requirements.txt ./requirements.txt
 RUN uv pip install --system --no-cache-dir -r requirements.txt \
     && uv pip install --system --no-cache-dir scikit-learn==1.4.0
