@@ -47,14 +47,13 @@ CodeBuildServiceRole:
 # 4. Validar pipeline y registro
 aws sagemaker list-pipelines --region us-east-1
 
-# 5. Ejecución SAGEMAKER
-
-aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
-
-# 6. KEDRO DOCKER
+# 5. KEDRO DOCKER ECR
 aws ecr create-repository --repository-name iris-mlops --region us-east-1 --image-scanning-configuration scanOnPush=true
 
 aws ecr describe-repositories --repository-names iris-mlops --region us-east-1
+
+# 6. Ejecución SAGEMAKER
+aws sagemaker start-pipeline-execution --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1
 
 # 7. Pasos de la Ejecución
 aws sagemaker list-pipeline-executions --pipeline-name iris-mlops-pipeline-TradeOffBiasVariance --region us-east-1

@@ -29,7 +29,6 @@ def get_pipeline(
     param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
 
     # === Processor con tu imagen personalizada (Docker en ECR) ===
-    # Ejecutaremos tu script Python, que a su vez llama a "kedro run"
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -37,14 +36,14 @@ def get_pipeline(
         instance_count=1,
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
-        command=["python3"],  # ejecuta el script Python
+        command=["python", "-m", "kedro"],  # ejecutar Kedro como módulo
     )
 
     # === Paso único: ejecutar Kedro Backtesting ===
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
-        code="src/processing/run_kedro.py",
+        code="src/processing/run_kedro.py",   # se ignora porque mandamos comando directo
         inputs=[
             ProcessingInput(
                 source="conf_mlops",
@@ -60,10 +59,11 @@ def get_pipeline(
             )
         ],
         job_arguments=[
-            "--product", param_product,
-            "--fecha_ejecucion", param_fecha,
-            "--variable_apertura", param_var,
-            "--target", param_target,
+            "run",
+            "--pipeline", "backtesting",
+            "--params", f"product={param_product},fecha_ejecucion={param_fecha},"
+                        f"variable_apertura={param_var},target={param_target}",
+            "--conf-source=./conf_mlops/",
         ],
     )
 
