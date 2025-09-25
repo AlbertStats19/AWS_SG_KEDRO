@@ -33,7 +33,6 @@ def get_pipeline(
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
         command=["python3"],
-        # ✅ Variables de entorno que tu script usará
         env={
             "KEDRO_CONF_DIR": "/opt/ml/processing/conf_mlops",
             "KEDRO_ENV": "base",
@@ -49,9 +48,8 @@ def get_pipeline(
         processor=kedro_processor,
         code="src/processing/run_kedro.py",
         inputs=[
-            # ✅ Monta la carpeta de configuración EXACTAMENTE donde la espera run_kedro.py
             ProcessingInput(
-                source="conf_mlops",  # carpeta de tu repo (CodePipeline la sube)
+                source="conf_mlops",
                 destination="/opt/ml/processing/conf_mlops",
                 input_name="conf_mlops",
             )
@@ -63,8 +61,8 @@ def get_pipeline(
                 output_name="backtesting_output",
             )
         ],
-        # No pasamos args por CLI; todo va por ENV
-        job_arguments=[],
+        # ❌ Eliminado job_arguments=[]
+        # SageMaker ya monta el script y ejecuta python3
     )
 
     pipeline = Pipeline(
