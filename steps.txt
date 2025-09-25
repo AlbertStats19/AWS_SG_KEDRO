@@ -41,6 +41,9 @@ aws cloudformation deploy `
 # AWSCodeBuildAdminAccess
 # AWSCodePipeline_FullAccess
 
+CodeBuildServiceRole:
+# AmazonEC2ContainerRegistryPowerUser
+
 # 4. Validar pipeline y registro
 aws sagemaker list-pipelines --region us-east-1
 

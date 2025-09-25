@@ -13,6 +13,8 @@ phases:
     commands:
       - echo "=== Instalando dependencias base para CodeBuild ==="
       - python -m pip install --upgrade pip
+      # 🚀 Instalar librerías necesarias para ejecutar el pipeline
+      - pip install sagemaker boto3
 
   pre_build:
     commands:
