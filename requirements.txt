@@ -1,7 +1,7 @@
 kedro==0.18.14
 pyarrow
 s3fs
-pickle5
+#pickle5
 sagemaker
 boto3
 pandas
