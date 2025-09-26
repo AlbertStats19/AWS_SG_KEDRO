@@ -15,7 +15,7 @@ def main():
     # 🔹 Crear sesión de Kedro usando package_name explícito
     with KedroSession.create(
         package_name="processing",   # 👈 tomado de pyproject.toml
-        project_path=Path.cwd(),
+        project_path=Path(__file__).resolve().parents[1],  # 👈 apunta a src/processing
         env="base"
     ) as session:
         context = session.load_context()
@@ -27,6 +27,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 #import os
 #import subprocess
