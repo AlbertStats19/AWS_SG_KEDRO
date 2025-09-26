@@ -1,7 +1,16 @@
 kedro==0.18.14
-pandas>=1.5,<2.3
-pyarrow>=12,<16
-s3fs>=2023.1.0
-pickle5; python_version < "3.8"
+pyarrow
+s3fs
+pickle5
 sagemaker
 boto3
+pandas
+numpy
+matplotlib
+seaborn
+ipython
+scikit-learn
+xgboost
+s3fs
+bigframes
+scipy
