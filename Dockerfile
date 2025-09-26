@@ -15,8 +15,8 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt \
 WORKDIR /opt/project
 COPY . .
 
-# 🔑 Aseguramos que Python vea tanto src/ como tu nuevo paquete local
-ENV PYTHONPATH=/opt/project/src:/opt/project/data_bbog_integration_fabrica_personas
+# 🔑 Solo apuntamos al src/ (ahí ya vive tu paquete)
+ENV PYTHONPATH=/opt/project/src
 
 # Crear carpeta local vacía para evitar error de Kedro
 RUN mkdir -p /opt/project/conf_mlops/local
@@ -39,6 +39,7 @@ EXPOSE 8888
 
 # Por defecto (cuando pruebes local): ejecuta el runner
 CMD ["python", "src/processing/run_kedro.py"]
+
 
 
 ## Imagen base ligera de Python desde AWS Public ECR
