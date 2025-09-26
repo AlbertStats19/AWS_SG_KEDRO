@@ -4,9 +4,9 @@ env:
   variables:
     AWS_REGION: "us-east-1"
     S3_ARTIFACT_BUCKET: "iris-mlops-artifacts"
-    S3_KEDRO_DATA_BUCKET: "iris-mlops-kedro-data"
     SAGEMAKER_EXECUTION_ROLE_ARN: "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
     SAGEMAKER_BASE_JOB_PREFIX: "iris-mlops"
+    ACCOUNT_ID: "503427799533"
 
 phases:
   install:
@@ -18,20 +18,20 @@ phases:
   pre_build:
     commands:
       - echo "Autenticando en Amazon ECR..."
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
   build:
     commands:
       - echo "=== Construyendo imagen Docker con Kedro ==="
       - docker build -t iris-mlops .
-      # Validación barata: que se pueda importar el paquete
-      - docker run --rm iris-mlops python -c "import processing; print('processing OK')"
-      - docker tag iris-mlops:latest 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
+      # Validación: que se pueda importar el paquete
+      - docker run --rm iris-mlops python -c "import kedro; print('kedro OK')"
+      - docker tag iris-mlops:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
 
   post_build:
     commands:
       - echo "Empujando imagen a ECR..."
-      - docker push 503427799533.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
+      - docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-mlops:latest
       - echo "Imagen subida a ECR correctamente"
       - echo "Ejecutando pipeline en SageMaker..."
       - python src/tradeoff_pipeline.py

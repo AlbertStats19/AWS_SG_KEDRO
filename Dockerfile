@@ -8,14 +8,13 @@ RUN pip install uv
 # Reqs del proyecto
 COPY requirements.txt ./requirements.txt
 RUN uv pip install --system --no-cache-dir -r requirements.txt \
-    && uv pip install --system --no-cache-dir scikit-learn==1.4.0
+    && uv pip install --system --no-cache-dir scikit-learn==1.4.0 \
+    && uv pip install --system --no-cache-dir kedro==0.18.14
 
-# Copiamos el repo y lo instalamos como paquete
+# Copiamos el repo
 WORKDIR /opt/project
 COPY . .
-# RUN pip install -e .
 ENV PYTHONPATH=/opt/project/src
-
 
 # Creamos usuario no-root
 ARG KEDRO_UID=999

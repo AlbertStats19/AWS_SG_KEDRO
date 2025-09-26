@@ -1,10 +1,8 @@
 import os
 import sagemaker
 from sagemaker.processing import ScriptProcessor, ProcessingInput, ProcessingOutput
-from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.steps import ProcessingStep
 from sagemaker.workflow.pipeline import Pipeline
-
 
 def get_pipeline(
     region=None,
@@ -20,12 +18,7 @@ def get_pipeline(
     account_id = os.environ.get("ACCOUNT_ID", "503427799533")
     ecr_image_uri = f"{account_id}.dkr.ecr.{region}.amazonaws.com/iris-mlops:latest"
 
-    # Parámetros
-    param_product = ParameterString(name="Product", default_value="CDT")
-    param_fecha = ParameterString(name="FechaEjecucion", default_value="2025-07-10")
-    param_var = ParameterString(name="VariableApertura", default_value="cdt_cant_aper_mes")
-    param_target = ParameterString(name="Target", default_value="cdt_cant_ap_group3")
-
+    # Procesador SageMaker (no pasamos parámetros porque ya están quemados en run_kedro.py)
     kedro_processor = ScriptProcessor(
         image_uri=ecr_image_uri,
         role=role,
@@ -34,17 +27,8 @@ def get_pipeline(
         base_job_name=f"{base_job_prefix}-tradeoff",
         sagemaker_session=sagemaker_session,
         command=["python3"],
-        env={
-            "KEDRO_CONF_DIR": "/opt/ml/processing/conf_mlops",
-            "KEDRO_ENV": "base",
-            "PARAM_PRODUCT": param_product,
-            "PARAM_FECHA_EJECUCION": param_fecha,
-            "PARAM_VARIABLE_APERTURA": param_var,
-            "PARAM_TARGET": param_target,
-        },
     )
 
-    # 👇 Aquí la corrección: el parámetro "code" debe apuntar a un archivo .py, no a un directorio
     kedro_step = ProcessingStep(
         name="TradeOffBiasVariance",
         processor=kedro_processor,
@@ -67,7 +51,6 @@ def get_pipeline(
 
     pipeline = Pipeline(
         name="iris-mlops-pipeline-TradeOffBiasVariance",
-        parameters=[param_product, param_fecha, param_var, param_target],
         steps=[kedro_step],
         sagemaker_session=sagemaker_session,
     )

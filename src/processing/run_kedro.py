@@ -1,8 +1,8 @@
-from pathlib import Path
-from kedro.framework.session import KedroSession
+import subprocess
+import os
 
 def main():
-    # 🔹 Parámetros de ejecución (quemados aquí para simplicidad)
+    # 🔹 Parámetros quemados para simplicidad y estabilidad
     params = {
         "product": "CDT",
         "fecha_ejecucion": "2025-07-10",
@@ -12,22 +12,29 @@ def main():
 
     print(f"[INFO] Parámetros de ejecución: {params}")
 
-    # 🔹 Crear sesión de Kedro usando package_name explícito
-    with KedroSession.create(
-        package_name="processing",   # 👈 tomado de pyproject.toml
-        project_path=Path(__file__).resolve().parents[1],  # 👈 apunta a src/processing
-        env="base"
-    ) as session:
-        context = session.load_context()
-        print("[INFO] Contexto Kedro cargado correctamente")
+    # 🔹 Cambiar al raíz del proyecto
+    os.chdir("/opt/project")
 
-        print(f"[INFO] Ejecutando pipeline 'backtesting' con parámetros...")
-        session.run(pipeline_name="backtesting", extra_params=params)
-        print("[INFO] Pipeline 'backtesting' ejecutado exitosamente ✅")
+    # 🔹 Convertir params a formato CLI (--key=value)
+    cli_params = [f"--{k}={v}" for k, v in params.items()]
+
+    print("[INFO] Ejecutando pipeline 'backtesting' vía CLI Kedro...")
+    result = subprocess.run(
+        ["kedro", "run", "--pipeline=backtesting"] + cli_params,
+        capture_output=True,
+        text=True
+    )
+
+    print("[STDOUT]", result.stdout)
+    print("[STDERR]", result.stderr)
+
+    if result.returncode != 0:
+        raise RuntimeError("❌ Error al ejecutar el pipeline Kedro")
+
+    print("[INFO] Pipeline 'backtesting' ejecutado exitosamente ✅")
 
 if __name__ == "__main__":
     main()
-
 
 #import os
 #import subprocess
