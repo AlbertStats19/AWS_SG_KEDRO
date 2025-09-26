@@ -12,19 +12,11 @@ info_save_select:
   type: pickle.PickleDataset
   filepath: s3://iris-mlops-kedro-data/data_mlops/07-model_selection/info_save_select.pickle
 
-# ------ MODEL OUTPUT (solo si tu pipeline los usa como insumo de monitoreo)
-# base_calificada_nueva_* viven en 08-model_output del bucket:
-# (Los dejamos como insumo referenciado por parameters_backtesting.yml)
-
-# ----- BACKTESTING (salidas del paso; puedes mantener locales o a S3)
+# ----- BACKTESTING
 data_backtesting:
   type: pickle.PickleDataset
-  filepath: s3://iris-mlops-kedro-data/data_mlops/09-backtesting/save_backtesting_${_fecha_ejecucion}_prueba1.pickle
+  filepath: s3://iris-mlops-kedro-data/data_mlops/09-backtesting/save_backtesting_${runtime_params:fecha_ejecucion}_prueba1.pickle
 
 insumo_modelo_360:
   type: pickle.PickleDataset
-  filepath: s3://iris-mlops-kedro-data/data_mlops/09-backtesting/insumo_modelo_360_${_fecha_ejecucion}_prueba1.pickle
-
-#_fecha_ejecucion: "${format_execution_date: ${runtime_params:fecha_ejecucion}}"
-#_fecha_ejecucion: ${runtime_params:fecha_ejecucion|202504}
-
+  filepath: s3://iris-mlops-kedro-data/data_mlops/09-backtesting/insumo_modelo_360_${runtime_params:fecha_ejecucion}_prueba1.pickle
