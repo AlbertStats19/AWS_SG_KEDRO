@@ -1,8 +1,6 @@
 import subprocess
-import os
 
 def main():
-    # 🔹 Parámetros quemados para simplicidad y estabilidad
     params = {
         "product": "CDT",
         "fecha_ejecucion": "2025-07-10",
@@ -12,17 +10,20 @@ def main():
 
     print(f"[INFO] Parámetros de ejecución: {params}")
 
-    # 🔹 Cambiar al raíz del proyecto
-    os.chdir("/opt/project")
-
-    # 🔹 Convertir params a formato CLI (--key=value)
-    cli_params = [f"--{k}={v}" for k, v in params.items()]
+    # 🔹 Convertir dict en formato CLI
+    params_str = ",".join([f"{k}:{v}" for k, v in params.items()])
 
     print("[INFO] Ejecutando pipeline 'backtesting' vía CLI Kedro...")
     result = subprocess.run(
-        ["kedro", "run", "--pipeline=backtesting"] + cli_params,
+        [
+            "kedro",
+            "run",
+            "--pipeline=backtesting",
+            f"--params={params_str}",
+        ],
+        check=False,
         capture_output=True,
-        text=True
+        text=True,
     )
 
     print("[STDOUT]", result.stdout)
@@ -32,6 +33,7 @@ def main():
         raise RuntimeError("❌ Error al ejecutar el pipeline Kedro")
 
     print("[INFO] Pipeline 'backtesting' ejecutado exitosamente ✅")
+
 
 if __name__ == "__main__":
     main()
