@@ -11,10 +11,12 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt \
     && uv pip install --system --no-cache-dir scikit-learn==1.4.0 \
     && uv pip install --system --no-cache-dir kedro==0.18.14
 
-# Copiamos el repo
+# Copiamos el repo completo
 WORKDIR /opt/project
 COPY . .
-ENV PYTHONPATH=/opt/project/src
+
+# 🔑 Aseguramos que Python vea tanto src/ como tu nuevo paquete local
+ENV PYTHONPATH=/opt/project/src:/opt/project/data_bbog_integration_fabrica_personas
 
 # Crear carpeta local vacía para evitar error de Kedro
 RUN mkdir -p /opt/project/conf_mlops/local
@@ -37,7 +39,6 @@ EXPOSE 8888
 
 # Por defecto (cuando pruebes local): ejecuta el runner
 CMD ["python", "src/processing/run_kedro.py"]
-
 
 
 ## Imagen base ligera de Python desde AWS Public ECR
