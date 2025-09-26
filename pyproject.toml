@@ -1,0 +1,11 @@
+[build-system]
+requires = ["setuptools>=65.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "processing"
+version = "0.1.0"
+
+[tool.kedro]
+package_name = "processing"
+project_name = "AWS_SG_KEDRO"
