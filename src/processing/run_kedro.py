@@ -2,7 +2,7 @@ from pathlib import Path
 from kedro.framework.session import KedroSession
 
 def main():
-    # 🔥 Parámetros quemados directamente
+    # 🔹 Parámetros de ejecución (quemados aquí para simplicidad)
     params = {
         "product": "CDT",
         "fecha_ejecucion": "2025-07-10",
@@ -10,17 +10,23 @@ def main():
         "target": "cdt_cant_ap_group3",
     }
 
+    print(f"[INFO] Parámetros de ejecución: {params}")
+
+    # 🔹 Crear sesión de Kedro usando package_name explícito
     with KedroSession.create(
+        package_name="processing",   # 👈 tomado de pyproject.toml
         project_path=Path.cwd(),
         env="base"
     ) as session:
         context = session.load_context()
-        print(f"[INFO] Ejecutando pipeline 'backtesting' con parámetros: {params}")
+        print("[INFO] Contexto Kedro cargado correctamente")
+
+        print(f"[INFO] Ejecutando pipeline 'backtesting' con parámetros...")
         session.run(pipeline_name="backtesting", extra_params=params)
+        print("[INFO] Pipeline 'backtesting' ejecutado exitosamente ✅")
 
 if __name__ == "__main__":
     main()
-
 
 #import os
 #import subprocess
