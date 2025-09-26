@@ -13,7 +13,9 @@ RUN uv pip install --system --no-cache-dir -r requirements.txt \
 # Copiamos el repo y lo instalamos como paquete
 WORKDIR /opt/project
 COPY . .
-RUN pip install -e .
+# RUN pip install -e .
+ENV PYTHONPATH=/opt/project/src
+
 
 # Creamos usuario no-root
 ARG KEDRO_UID=999
