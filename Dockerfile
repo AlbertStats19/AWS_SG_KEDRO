@@ -16,6 +16,9 @@ WORKDIR /opt/project
 COPY . .
 ENV PYTHONPATH=/opt/project/src
 
+# Crear carpeta local vacía para evitar error de Kedro
+RUN mkdir -p /opt/project/conf_mlops/local
+
 # Creamos usuario no-root
 ARG KEDRO_UID=999
 ARG KEDRO_GID=0
@@ -34,6 +37,7 @@ EXPOSE 8888
 
 # Por defecto (cuando pruebes local): ejecuta el runner
 CMD ["python", "src/processing/run_kedro.py"]
+
 
 
 ## Imagen base ligera de Python desde AWS Public ECR
