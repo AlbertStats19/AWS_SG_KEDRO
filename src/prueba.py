@@ -93,3 +93,4 @@ if __name__ == "__main__":
     print(f"[INFO] Upserting SageMaker Pipeline: {pipeline.name}")
     pipeline.upsert(role_arn=role)
     print(f"[INFO] Pipeline {pipeline.name} creado/actualizado correctamente ✅")
+

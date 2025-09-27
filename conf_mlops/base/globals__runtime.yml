@@ -1,0 +1,6 @@
+# Variables globales de ejecución usadas por catalog.yml y pipelines Kedro
+
+_fecha_ejecucion: "2025-07-10"
+_product: "CDT"
+_variable_apertura: "cdt_cant_aper_mes"
+_target: "cdt_cant_ap_group3"
