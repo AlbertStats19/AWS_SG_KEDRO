@@ -11,7 +11,7 @@ rutas_inputs: [[1,'202504','s3://data-bbog-dev-refined/estandarizado/feature-sto
 
 # cambio a ejecucion a modo de monitoreo
 monitoreo: 
-    want: False   # t de rezago, corte input calificado, base calificada en la fecha de ejecucion 
+    want: True   # t de rezago, corte input calificado, base calificada en la fecha de ejecucion 
     rutas_inputs:  [[1,'202506','s3://iris-mlops-kedro-data/data_mlops/08-model_output/base_calificada_nueva_202507.parquet'], #${_fecha_ejecucion}
                     [2,'202505','s3://iris-mlops-kedro-data/data_mlops/08-model_output/base_calificada_nueva_202506.parquet'], #${previous_month:'${runtime_params:fecha_ejecucion}'
                     [3,'202504','s3://iris-mlops-kedro-data/data_mlops/08-model_output/base_calificada_nueva_202505.parquet']
