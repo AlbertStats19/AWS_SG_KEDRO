@@ -1,4 +1,4 @@
-# 1. Crear los buckets en VS CODE:
+# 1. Crear los buckets en VS CODE: CONSOLA
 
 aws s3 mb s3://iris-mlops-artifacts --region us-east-1
 aws s3 mb s3://iris-mlops-kedro-data --region us-east-1
